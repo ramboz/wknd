@@ -15,7 +15,7 @@ import {
   loadCSS,
   toClassName,
   getMetadata,
-} from '../../lib-franklin.js';
+} from '../scripts.js';
 
 const percentformat = new Intl.NumberFormat('en-US', { style: 'percent', maximumSignificantDigits: 2 });
 const countformat = new Intl.NumberFormat('en-US', { maximumSignificantDigits: 2 });
@@ -89,7 +89,7 @@ async function createExperiment() {
     <div class="hlx-popup-header">
       <div>
         <h4>${config.label}</h4>
-        <div class="hlx-details">${config.status}${config.audience ? ', ' : ''}${config.audience}${config.variants[config.variantNames[0]].code.length ? ', Blocks: ' : ''}${config.variants[config.variantNames[0]].code.join(',')}</div>
+        <div class="hlx-details">${config.status}${config.audience ? ', ' : ''}${config.audience}${config.variants[config.variantNames[0]].blocks.length ? ', Blocks: ' : ''}${config.variants[config.variantNames[0]].blocks.join(',')}</div>
         <div class="hlx-info">How is it going?</div>
       </div>
       <div>
@@ -226,7 +226,7 @@ async function createExperiment() {
  * @return {Object} returns a badge or empty string
  */
 async function decoratePreviewMode() {
-  loadCSS('/scripts/plugins/experimentation-ued/preview.css');
+  loadCSS('/scripts/experimentation-ued/preview.css');
   const overlay = document.createElement('div');
   overlay.className = 'hlx-preview-overlay';
   overlay.append(await createExperiment());

@@ -10,6 +10,8 @@
  * governing permissions and limitations under the License.
  */
 
+let experimentationPlugin;
+
 /**
  * log RUM if part of the sample.
  * @param {string} checkpoint identifies the checkpoint in funnel
@@ -354,38 +356,60 @@ export function buildBlock(blockName, content) {
 }
 
 /**
+ * Gets the configuration for the given glock, and also passes
+ * the config to the `patchBlockConfig` methods in the plugins.
+ *
+ * @param {Element} block The block element
+ * @returns {object} The block config (blockName, cssPath and jsPath)
+ */
+function getBlockConfig(block) {
+  const blockName = block.getAttribute('data-block-name');
+  const cssPath = `${window.hlx.codeBasePath}/blocks/${blockName}/${blockName}.css`;
+  const jsPath = `${window.hlx.codeBasePath}/blocks/${blockName}/${blockName}.js`;
+
+  const config = {
+    blockName,
+    cssPath,
+    jsPath,
+  };
+  return experimentationPlugin ? experimentationPlugin.patchBlockConfig(config) : config;
+}
+
+/**
  * Loads JS and CSS for a block.
  * @param {Element} block The block element
  */
 export async function loadBlock(block, eager = false) {
-  if (!(block.getAttribute('data-block-status') === 'loading' || block.getAttribute('data-block-status') === 'loaded')) {
-    block.setAttribute('data-block-status', 'loading');
-    const blockName = block.getAttribute('data-block-name');
-    try {
-      const cssLoaded = new Promise((resolve) => {
-        loadCSS(`${window.hlx.codeBasePath}/blocks/${blockName}/${blockName}.css`, resolve);
-      });
-      const decorationComplete = new Promise((resolve) => {
-        (async () => {
-          try {
-            const mod = await import(`../blocks/${blockName}/${blockName}.js`);
-            if (mod.default) {
-              await mod.default(block, blockName, document, eager);
-            }
-          } catch (error) {
-            // eslint-disable-next-line no-console
-            console.log(`failed to load module for ${blockName}`, error);
-          }
-          resolve();
-        })();
-      });
-      await Promise.all([cssLoaded, decorationComplete]);
-    } catch (error) {
-      // eslint-disable-next-line no-console
-      console.log(`failed to load block ${blockName}`, error);
-    }
-    block.setAttribute('data-block-status', 'loaded');
+  const status = block.getAttribute('data-block-status');
+  if (status === 'loading' || status === 'loaded') {
+    return;
   }
+  block.setAttribute('data-block-status', 'loading');
+  const { blockName, cssPath, jsPath } = getBlockConfig(block);
+  try {
+    const cssLoaded = new Promise((resolve) => {
+      loadCSS(cssPath, resolve);
+    });
+    const decorationComplete = new Promise((resolve) => {
+      (async () => {
+        try {
+          const mod = await import(jsPath);
+          if (mod.default) {
+            await mod.default(block);
+          }
+        } catch (error) {
+          // eslint-disable-next-line no-console
+          console.log(`failed to load module for ${blockName}`, error);
+        }
+        resolve();
+      })();
+    });
+    await Promise.all([cssLoaded, decorationComplete]);
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.log(`failed to load block ${blockName}`, error);
+  }
+  block.setAttribute('data-block-status', 'loaded');
 }
 
 /**
@@ -673,7 +697,6 @@ export function decorateMain(main) {
  * loads everything needed to get to LCP.
  */
 async function loadEager(doc) {
-  let experimentationPlugin;
   if (getMetadata('experiment') || getMetadata('instant-experiment')) {
     experimentationPlugin = await import('./experimentation-ued/index.js');
     await experimentationPlugin.preEager({}, { rum: { sampleRUM }});
@@ -686,7 +709,7 @@ async function loadEager(doc) {
     await waitForLCP();
   }
   if (experimentationPlugin) {
-    postEager();
+    experimentationPlugin.postEager();
   }
 }
 

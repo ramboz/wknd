@@ -114,7 +114,41 @@ function validateConfig(config) {
  * @param {object} cfg
  * @returns {object} containing the experiment manifest
  */
-export async function getExperimentConfig(experimentId, cfg) {
+export async function getExperimentConfig(experimentId, instantExperiment, cfg) {
+  if (instantExperiment) {
+    const config = {
+      label: `Instant Experiment: ${experimentId}`,
+      audience: '',
+      status: 'Active',
+      id: experimentId,
+      variants: {},
+      variantNames: [],
+    };
+
+    const pages = instantExperiment.split(',').map((p) => new URL(p.trim()).pathname);
+    const evenSplit = 1 / (pages.length + 1);
+
+    config.variantNames.push('control');
+    config.variants.control = {
+      percentageSplit: '',
+      pages: [window.location.pathname],
+      blocks: [],
+      label: 'Control',
+    };
+
+    pages.forEach((page, i) => {
+      const vname = `challenger-${i + 1}`;
+      config.variantNames.push(vname);
+      config.variants[vname] = {
+        percentageSplit: `${evenSplit}`,
+        pages: [page],
+        label: `Challenger ${i + 1}`,
+      };
+    });
+
+    return (config);
+  }
+
   const path = `${cfg.basePath}/${experimentId}/${cfg.configFile}`;
   try {
     const resp = await fetch(path);
@@ -209,11 +243,12 @@ async function runExperiment(config, plugins) {
   if (!experiment) {
     return;
   }
+  const instantExperiment = getMetadata('instant-experiment');
 
   const usp = new URLSearchParams(window.location.search);
   const [forcedExperiment, forcedVariant] = usp.has(config.queryParameter) ? usp.get(config.queryParameter).split('/') : [];
 
-  const experimentConfig = await getExperimentConfig(experiment, config);
+  const experimentConfig = await getExperimentConfig(experiment, instantExperiment, config);
   console.debug(experimentConfig);
   if (!experimentConfig || (toCamelCase(experimentConfig.status) !== 'active' && !forcedExperiment)) {
     return;
@@ -245,21 +280,21 @@ async function runExperiment(config, plugins) {
   }
 
   const currentPath = window.location.pathname;
-  const { content } = experimentConfig.variants[experimentConfig.selectedVariant];
-  if (!content.length) {
+  const { pages } = experimentConfig.variants[experimentConfig.selectedVariant];
+  if (!pages.length) {
     return;
   }
 
   const control = experimentConfig.variants[experimentConfig.variantNames[0]];
-  const index = control.content.indexOf(currentPath);
-  if (index < 0 || content[index] === currentPath) {
+  const index = control.pages.indexOf(currentPath);
+  if (index < 0 || pages[index] === currentPath) {
     return;
   }
 
   // Fullpage content experiment
   document.body.classList.add(`experiment-${experimentConfig.id}`);
   document.body.classList.add(`variant-${experimentConfig.selectedVariant}`);
-  await replaceInner(content[0], document.querySelector('main'));
+  await replaceInner(pages[0], document.querySelector('main'));
 }
 
 export function patchBlockConfig(config) {
