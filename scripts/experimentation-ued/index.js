@@ -4,10 +4,6 @@ import {
   toClassName,
 } from '../scripts.js';
 
-import {
-  evaluateDecisionPolicy,
-} from './ued.js';
-
 const DEFAULT_OPTIONS = {
   basePath: '/experiments',
   configFile: 'manifest.json',
@@ -266,6 +262,7 @@ async function runExperiment(config, plugins) {
   if (forcedVariant && experimentConfig.variantNames.includes(forcedVariant)) {
     experimentConfig.selectedVariant = forcedVariant;
   } else {
+    const { evaluateDecisionPolicy } = await import('./ued.js');
     const decision = evaluateDecisionPolicy(getDecisionPolicy(experimentConfig), {});
     experimentConfig.selectedVariant = decision.items[0].id;
   }
