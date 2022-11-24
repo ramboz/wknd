@@ -673,11 +673,20 @@ export function decorateMain(main) {
  * loads everything needed to get to LCP.
  */
 async function loadEager(doc) {
+  let experimentationPlugin;
+  if (getMetadata('experiment') || getMetadata('instant-experiment')) {
+    experimentationPlugin = await import('./experimentation-ued/index.js');
+    await experimentationPlugin.preEager({}, { rum: { sampleRUM }});
+  }
+
   decorateTemplateAndTheme();
   const main = doc.querySelector('main');
   if (main) {
     decorateMain(main);
     await waitForLCP();
+  }
+  if (experimentationPlugin) {
+    postEager();
   }
 }
 
