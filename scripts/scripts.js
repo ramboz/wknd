@@ -708,9 +708,6 @@ async function loadEager(doc) {
     decorateMain(main);
     await waitForLCP();
   }
-  if (experimentationPlugin) {
-    experimentationPlugin.postEager();
-  }
 }
 
 /**
@@ -732,6 +729,10 @@ async function loadLazy(doc) {
   sampleRUM('lazy');
   sampleRUM.observe(main.querySelectorAll('div[data-block-name]'));
   sampleRUM.observe(main.querySelectorAll('picture > img'));
+
+  if (experimentationPlugin) {
+    experimentationPlugin.postEager();
+  }
 }
 
 /**
