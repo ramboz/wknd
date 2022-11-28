@@ -731,7 +731,7 @@ async function loadLazy(doc) {
   sampleRUM.observe(main.querySelectorAll('picture > img'));
 
   if (experimentationPlugin) {
-    experimentationPlugin.postEager();
+    experimentationPlugin.postLazy();
   }
 }
 
